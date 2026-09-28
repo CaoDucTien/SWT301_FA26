@@ -85,15 +85,58 @@ public class AccountService {
     }
 
     public ResultCode login(String username, String password) {
-        throw new UnsupportedOperationException("TODO");
+        // BR-LOG-01: Kiá»ƒm tra rá»—ng/null
+        if (isBlank(username) || isBlank(password)) {
+            return ResultCode.INVALID_INPUT;
+        }
+
+        Account acc = accounts.get(key(username));
+        // Rule 1: User khÃ´ng tá»“n táº¡i
+        if (acc == null) {
+            return ResultCode.INVALID_CREDENTIALS;
+        }
+
+        // Rule 2: TÃ i khoáº£n bá»‹ vÃ´ hiá»‡u hÃ³a
+        if (acc.getStatus() == AccountStatus.DISABLED) {
+            return ResultCode.ACCOUNT_DISABLED;
+        }
+
+        // Rule 3: TÃ i khoáº£n Ä‘ang bá»‹ khÃ³a (bá»™ Ä‘áº¿m KHÃ”NG tÄƒng)
+        if (acc.isLocked()) {
+            return ResultCode.ACCOUNT_LOCKED;
+        }
+
+        // Kiá»ƒm tra máº­t kháº©u
+        if (!PasswordHasher.matches(acc.getSalt(), password, acc.getCurrentPasswordHash())) {
+            acc.incrementFailedAttempts();
+            // Rule 5: Láº§n sai thá»© 5 -> KhÃ³a tÃ i khoáº£n
+            if (acc.getFailedAttempts() >= MAX_FAILED_ATTEMPTS) {
+                acc.lock();
+                return ResultCode.ACCOUNT_LOCKED;
+            }
+            // Rule 4: Sai láº§n 1..4 -> tÄƒng bá»™ Ä‘áº¿m vÃ  bÃ¡o thÃ´ng tin khÃ´ng há»£p lá»‡
+            return ResultCode.INVALID_CREDENTIALS;
+        }
+
+        // Rule 6: ÄÄƒng nháº­p thÃ nh cÃ´ng -> Reset bá»™ Ä‘áº¿m vá» 0
+        acc.resetFailedAttempts();
+        return ResultCode.SUCCESS;
     }
 
     public ResultCode disableAccount(String username) {
-        throw new UnsupportedOperationException("TODO");
+        if (isBlank(username)) return ResultCode.USER_NOT_FOUND;
+        Account acc = accounts.get(key(username));
+        if (acc == null) return ResultCode.USER_NOT_FOUND;
+        acc.setStatus(AccountStatus.DISABLED);
+        return ResultCode.SUCCESS;
     }
 
     public ResultCode unlockAccount(String username) {
-        throw new UnsupportedOperationException("TODO");
+        if (isBlank(username)) return ResultCode.USER_NOT_FOUND;
+        Account acc = accounts.get(key(username));
+        if (acc == null) return ResultCode.USER_NOT_FOUND;
+        acc.unlock(); // locked = false, failedAttempts = 0
+        return ResultCode.SUCCESS;
     }
 
     public Optional<Account> findByUsername(String username) {
