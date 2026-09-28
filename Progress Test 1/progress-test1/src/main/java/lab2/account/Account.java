@@ -5,15 +5,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Account {
-    private String username;
-    private String email;
-    private LocalDate dateOfBirth;
-    private String phone;
-    private String salt;
+    private final String username;
+    private final String email;
+    private final LocalDate dateOfBirth;
+    private final String phone;
+    private final String salt;
     private AccountStatus status;
     private int failedAttempts;
     private boolean locked;
-    private List<String> passwordHistory = new ArrayList<>();
+    private final List<String> passwordHistory = new ArrayList<>();
 
     public Account(String username, String email, LocalDate dateOfBirth, String phone, String salt, String passwordHash) {
         this.username = username;
@@ -24,7 +24,9 @@ public class Account {
         this.status = AccountStatus.ACTIVE;
         this.failedAttempts = 0;
         this.locked = false;
-        this.passwordHistory.add(passwordHash);
+        if (passwordHash != null) {
+            this.passwordHistory.add(passwordHash);
+        }
     }
 
     public String getUsername() { return username; }
