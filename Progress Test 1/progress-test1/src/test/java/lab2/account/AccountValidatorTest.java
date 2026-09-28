@@ -1,6 +1,7 @@
 package lab2.account;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 
@@ -9,34 +10,39 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("AccountValidator")
 class AccountValidatorTest {
 
-    // --- USERNAME TESTS ---
+    // ---------- Username (BR-REG-02) ----------
+    @Nested
+    @DisplayName("isValidUsername")
+    class Username {
 
-    @ParameterizedTest(name = "[{index}] username há»£p lá»‡: {0}")
-    @ValueSource(strings = {"alice", "Alice_01", "Z____", "User123456789012345"})
-    void isValidUsername_ValidUsernames_ReturnsTrue(String username) {
-        assertTrue(AccountValidator.isValidUsername(username));
-    }
+        @ParameterizedTest(name = "[{index}] \"{0}\" há»£p lá»‡")
+        @ValueSource(strings = {"alice", "Alice_01", "Z____", "bob_the_builder", "abcdefghij0123456789"})
+        void isValidUsername_ValidValues_ReturnsTrue(String username) {
+            assertTrue(AccountValidator.isValidUsername(username));
+        }
 
-    @ParameterizedTest(name = "[{index}] username khÃ´ng há»£p lá»‡: {0}")
-    @ValueSource(strings = {"ab_1", "1alice", "_alice", "ali ce", "alice!", "alice-01"})
-    void isValidUsername_InvalidUsernames_ReturnsFalse(String username) {
-        assertFalse(AccountValidator.isValidUsername(username));
-    }
+        @ParameterizedTest(name = "[{index}] \"{0}\" khÃ´ng há»£p lá»‡")
+        @ValueSource(strings = {"ab_1", "1alice", "_alice", "ali ce", "alice!", "alice-01", "Ã¡lice", "aaaaaaaaaaaaaaaaaaaaa"})
+        void isValidUsername_InvalidValues_ReturnsFalse(String username) {
+            assertFalse(AccountValidator.isValidUsername(username));
+        }
 
-    @ParameterizedTest(name = "[{index}] username null hoáº·c rá»—ng")
-    @NullAndEmptySource
-    @ValueSource(strings = {"   "})
-    void isValidUsername_NullAndEmpty_ReturnsFalse(String username) {
-        assertFalse(AccountValidator.isValidUsername(username));
-    }
+        @ParameterizedTest(name = "[{index}] null/rá»—ng/blank: \"{0}\"")
+        @NullAndEmptySource
+        @ValueSource(strings = {" ", "   "})
+        void isValidUsername_NullEmptyBlank_ReturnsFalse(String username) {
+            assertFalse(AccountValidator.isValidUsername(username));
+        }
 
-    @ParameterizedTest(name = "[{index}] biÃªn Ä‘á»™ dÃ i username {0} -> {1}")
-    @MethodSource("usernameLengths")
-    void isValidUsername_BoundaryLengths(int length, boolean expected) {
-        String username = "a" + "0".repeat(length - 1);
-        assertEquals(expected, AccountValidator.isValidUsername(username));
+        @ParameterizedTest(name = "[{index}] Ä‘á»™ dÃ i {0} -> {1}")
+        @MethodSource("lab2.account.AccountValidatorTest#usernameLengths")
+        void isValidUsername_BoundaryLength(int length, boolean expected) {
+            String username = "a".repeat(length);
+            assertEquals(expected, AccountValidator.isValidUsername(username));
+        }
     }
 
     static Stream<Arguments> usernameLengths() {
@@ -50,95 +56,118 @@ class AccountValidatorTest {
         );
     }
 
-    // --- EMAIL TESTS ---
+    // ---------- Email (BR-REG-04) ----------
+    @Nested
+    @DisplayName("isValidEmail")
+    class Email {
 
-    @ParameterizedTest(name = "[{index}] email há»£p lá»‡: {0}")
-    @ValueSource(strings = {"user@gmail.com", "alice.bob@company.org", "test_user+tag@domain.co.uk"})
-    void isValidEmail_ValidEmails_ReturnsTrue(String email) {
-        assertTrue(AccountValidator.isValidEmail(email));
+        @ParameterizedTest(name = "[{index}] {0} -> {1}")
+        @CsvSource({
+                "alice@example.com, true",
+                "a.b+tag@mail.fpt.edu.vn, true",
+                "ALICE@EXAMPLE.COM, true",
+                "alice@example.c, false",
+                "alice@example, false",
+                "alice.example.com, false",
+                "@example.com, false",
+                "alice@.com, false",
+                "alice@example..com, false",
+                "alice@exa mple.com, false",
+                "alice@example.c0m, false"
+        })
+        void isValidEmail_Partitions(String email, boolean expected) {
+            assertEquals(expected, AccountValidator.isValidEmail(email));
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {" "})
+        void isValidEmail_NullEmptyBlank_ReturnsFalse(String email) {
+            assertFalse(AccountValidator.isValidEmail(email));
+        }
+
+        @ParameterizedTest(name = "[{index}] Ä‘á»™ dÃ i {0} -> {1}")
+        @CsvSource({"99, true", "100, true", "101, false"})
+        void isValidEmail_BoundaryLength(int totalLength, boolean expected) {
+            String suffix = "@example.com"; // 12 kÃ½ tá»±
+            String email = "a".repeat(totalLength - suffix.length()) + suffix;
+            assertEquals(totalLength, email.length());
+            assertEquals(expected, AccountValidator.isValidEmail(email));
+        }
     }
 
-    @ParameterizedTest(name = "[{index}] email khÃ´ng há»£p lá»‡: {0}")
-    @ValueSource(strings = {"plainaddress", "@missinglocal.com", "user@.com", "user@domain.c", "user@domain..com"})
-    void isValidEmail_InvalidEmails_ReturnsFalse(String email) {
-        assertFalse(AccountValidator.isValidEmail(email));
+    // ---------- Password (BR-REG-06) ----------
+    @Nested
+    @DisplayName("isValidPassword")
+    class Password {
+
+        @ParameterizedTest(name = "[{index}] {3}")
+        @CsvSource(delimiter = '|', value = {
+                "Secret@123    | alice_01 | true  | há»£p lá»‡ Ä‘á»§ 4 nhÃ³m",
+                "Abcdef1=      | alice_01 | true  | kÃ½ tá»± Ä‘áº·c biá»‡t '='",
+                "secret@123    | alice_01 | false | thiáº¿u chá»¯ hoa",
+                "SECRET@123    | alice_01 | false | thiáº¿u chá»¯ thÆ°á»ng",
+                "Secret@abc    | alice_01 | false | thiáº¿u chá»¯ sá»‘",
+                "Secret1234    | alice_01 | false | thiáº¿u kÃ½ tá»± Ä‘áº·c biá»‡t",
+                "'Secret @123' | alice_01 | false | chá»©a khoáº£ng tráº¯ng",
+                "Secret@123~   | alice_01 | false | kÃ½ tá»± ngoÃ i táº­p cho phÃ©p",
+                "Xalice_01@1   | alice_01 | false | chá»©a username",
+                "XALICE_01@1a  | alice_01 | false | chá»©a username khÃ¡c hoa/thÆ°á»ng",
+                "Xalice_01@1   |          | true  | username null -> bá» qua Ä‘iá»u kiá»‡n"
+        })
+        void isValidPassword_Partitions(String password, String username, boolean expected, String desc) {
+            assertEquals(expected, AccountValidator.isValidPassword(password, username));
+        }
+
+        @ParameterizedTest(name = "[{index}] Ä‘á»™ dÃ i {0} -> {1}")
+        @CsvSource({"7, false", "8, true", "9, true", "31, true", "32, true", "33, false"})
+        void isValidPassword_BoundaryLength(int length, boolean expected) {
+            String password = "Aa1!" + "b".repeat(length - 4);
+            assertEquals(expected, AccountValidator.isValidPassword(password, null));
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {" "})
+        void isValidPassword_NullEmptyBlank_ReturnsFalse(String password) {
+            assertFalse(AccountValidator.isValidPassword(password, "alice_01"));
+        }
     }
 
-    @ParameterizedTest(name = "[{index}] email null hoáº·c rá»—ng")
-    @NullAndEmptySource
-    void isValidEmail_NullAndEmpty_ReturnsFalse(String email) {
-        assertFalse(AccountValidator.isValidEmail(email));
+    // ---------- Phone (BR-REG-09) ----------
+    @Nested
+    @DisplayName("isValidPhone")
+    class Phone {
+
+        @ParameterizedTest
+        @ValueSource(strings = {"0312345678", "0512345678", "0712345678", "0812345678", "0912345678"})
+        void isValidPhone_ValidPrefixes_ReturnsTrue(String phone) {
+            assertTrue(AccountValidator.isValidPhone(phone));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"0112345678", "0412345678", "0612345678", "091234567", "09123456789", "091234567a", "+84912345678", "9123456789", " 0912345678"})
+        void isValidPhone_InvalidValues_ReturnsFalse(String phone) {
+            assertFalse(AccountValidator.isValidPhone(phone));
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        void isValidPhone_NullOrEmpty_ReturnsFalse(String phone) {
+            // validator chá»‰ kiá»ƒm Ä‘á»‹nh dáº¡ng; tÃ­nh "tÃ¹y chá»n" do AccountService xá»­ lÃ½
+            assertFalse(AccountValidator.isValidPhone(phone));
+        }
     }
 
-    @ParameterizedTest(name = "[{index}] biÃªn Ä‘á»™ dÃ i email {0} kÃ½ tá»± -> {1}")
+    // ---------- Age (BR-REG-08) ----------
+    @ParameterizedTest(name = "[{index}] sinh {0}, hÃ´m nay {1} -> {2} tuá»•i")
     @CsvSource({
-            "99, true",
-            "100, true",
-            "101, false"
-    })
-    void isValidEmail_BoundaryLengths(int totalLength, boolean expected) {
-        String suffix = "@domain.com"; // 11 chars
-        String local = "a".repeat(totalLength - suffix.length());
-        String email = local + suffix;
-        assertEquals(expected, AccountValidator.isValidEmail(email));
-    }
-
-    // --- PASSWORD TESTS ---
-
-    @ParameterizedTest(name = "[{index}] {3}")
-    @CsvSource(delimiter = '|', value = {
-            "Secret@123    | alice_01 | true  | Há»£p lá»‡ Ä‘áº§y Ä‘á»§ 4 nhÃ³m",
-            "secret@123    | alice_01 | false | Thiáº¿u chá»¯ hoa",
-            "SECRET@123    | alice_01 | false | Thiáº¿u chá»¯ thÆ°á»ng",
-            "Secret@@@@    | alice_01 | false | Thiáº¿u chá»¯ sá»‘",
-            "Secret1234    | alice_01 | false | Thiáº¿u kÃ½ tá»± Ä‘áº·c biá»‡t",
-            "'Secret @123' | alice_01 | false | Chá»©a khoáº£ng tráº¯ng",
-            "Secret#123~   | alice_01 | false | Chá»©a kÃ½ tá»± ngoÃ i danh sÃ¡ch",
-            "Xalice_01@1   | alice_01 | false | Chá»©a username",
-            "Xalice_01@1   |          | true  | Username rá»—ng/null thÃ¬ bá» qua kiá»ƒm tra username",
-            "Pass@12       | alice_01 | false | BiÃªn dÆ°á»›i: 7 kÃ½ tá»±",
-            "Passwd@1      | alice_01 | true  | BiÃªn min: 8 kÃ½ tá»±",
-            "P@ss1234567890123456789012345678 | alice_01 | true  | BiÃªn max: 32 kÃ½ tá»±",
-            "P@ss12345678901234567890123456789 | alice_01 | false | VÆ°á»£t biÃªn max: 33 kÃ½ tá»±"
-    })
-    void isValidPassword_EquivalencePartitions(String password, String username, boolean expected, String desc) {
-        assertEquals(expected, AccountValidator.isValidPassword(password, username));
-    }
-
-    @ParameterizedTest(name = "[{index}] password null hoáº·c empty")
-    @NullAndEmptySource
-    void isValidPassword_NullAndEmpty_ReturnsFalse(String password) {
-        assertFalse(AccountValidator.isValidPassword(password, "alice"));
-    }
-
-    // --- PHONE TESTS ---
-
-    @ParameterizedTest(name = "[{index}] Ä‘áº§u sá»‘ Ä‘iá»‡n thoáº¡i há»£p lá»‡: {0}")
-    @ValueSource(strings = {"0321234567", "0561234567", "0771234567", "0881234567", "0901234567"})
-    void isValidPhone_ValidPrefixes_ReturnsTrue(String phone) {
-        assertTrue(AccountValidator.isValidPhone(phone));
-    }
-
-    @ParameterizedTest(name = "[{index}] sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡: {0}")
-    @ValueSource(strings = {"0123456789", "091234567", "09123456789", "090123456a", "1234567890"})
-    void isValidPhone_InvalidPhones_ReturnsFalse(String phone) {
-        assertFalse(AccountValidator.isValidPhone(phone));
-    }
-
-    @ParameterizedTest(name = "[{index}] phone null")
-    @NullSource
-    void isValidPhone_Null_ReturnsFalse(String phone) {
-        assertFalse(AccountValidator.isValidPhone(phone));
-    }
-
-    // --- AGE TESTS ---
-
-    @ParameterizedTest(name = "[{index}] sinh ngÃ y {0}, hÃ´m nay {1} -> {2} tuá»•i")
-    @CsvSource({
-            "2008-09-28, 2026-09-28, 18", // ÄÃºng ngÃ y sinh nháº­t 18
-            "2008-09-29, 2026-09-28, 17", // 18 tuá»•i thiáº¿u 1 ngÃ y
-            "2008-02-29, 2026-02-28, 17", // NÄƒm nhuáº­n chÆ°a tá»›i ngÃ y
-            "2008-02-29, 2026-03-01, 18"  // NÄƒm nhuáº­n qua ngÃ y
+            "2008-09-28, 2026-09-28, 18", // Ä‘Ãºng sinh nháº­t 18
+            "2008-09-29, 2026-09-28, 17", // 18 tuá»•i trá»« 1 ngÃ y
+            "2008-09-27, 2026-09-28, 18",
+            "2008-02-29, 2026-02-28, 17", // nÄƒm nhuáº­n
+            "2008-02-29, 2026-03-01, 18",
+            "2026-09-28, 2026-09-28, 0"
     })
     void calculateAge_Boundaries(LocalDate dob, LocalDate today, int expected) {
         assertEquals(expected, AccountValidator.calculateAge(dob, today));
